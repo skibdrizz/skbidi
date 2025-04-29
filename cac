@@ -24,31 +24,40 @@ local function findNearestEgg()
 	return closestEgg
 end
 
--- Dịch chuyển nhanh (bay)
+-- Bay tới egg
 local function teleportTo(pos)
-	hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0)) -- bay lên 5 studs để tránh kẹt
+	hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0)) -- bay lên một chút để tránh va chạm
+end
+
+-- Reset nhân vật
+local function resetCharacter()
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Health = 0 -- chết để reset
+	end
 end
 
 while true do
 	local egg = findNearestEgg()
 
 	if egg then
-		local originalPos = hrp.Position
 		print("Đã phát hiện egg, bay đến...")
 
 		-- Bay đến egg
 		teleportTo(egg.Position)
 
-		-- Chờ đến khi egg bị lấy hoặc biến mất
+		-- Chờ nhặt egg hoặc nó biến mất
 		repeat
 			task.wait(0.1)
 		until not egg:IsDescendantOf(workspace) or (hrp.Position - egg.Position).Magnitude <= REACHED_DISTANCE
 
-		print("Quay lại vị trí cũ...")
-		-- Quay lại vị trí cũ
-		teleportTo(originalPos)
+		print("Egg đã được lấy. Reset nhân vật...")
+		resetCharacter()
+
+		-- Đợi cho đến khi respawn
+		character = player.CharacterAdded:Wait()
+		hrp = character:WaitForChild("HumanoidRootPart")
 	else
-		-- Không có egg, đợi rồi quét lại
 		task.wait(SCAN_INTERVAL)
 	end
 end
