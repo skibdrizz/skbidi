@@ -1,0 +1,83 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local eggName = "Egg"
+local CHECK_INTERVAL = 0.2
+local REACHED_DISTANCE = 5
+local STUCK_TIME_LIMIT = 5
+
+local function moveTo(position)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid:MoveTo(position)
+	end
+end
+
+local function findNearestEgg()
+	local closestEgg = nil
+	local shortestDistance = math.huge
+
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("MeshPart") and obj.Name == eggName and obj:IsDescendantOf(workspace) then
+			local distance = (hrp.Position - obj.Position).Magnitude
+			if distance < shortestDistance then
+				closestEgg = obj
+				shortestDistance = distance
+			end
+		end
+	end
+
+	return closestEgg, shortestDistance
+end
+
+local function isStuck(lastPos, currentPos)
+	local movement = (lastPos - currentPos).Magnitude
+	return movement < 1 -- ít hơn 1 stud trong 5s => coi như bị kẹt
+end
+
+while true do
+	local currentEgg, currentDist = findNearestEgg()
+
+	if currentEgg then
+		moveTo(currentEgg.Position)
+
+		local stuckTimer = 0
+		local lastPosition = hrp.Position
+
+		while currentEgg:IsDescendantOf(workspace) do
+			task.wait(CHECK_INTERVAL)
+
+			local nearestEgg, nearestDist = findNearestEgg()
+
+			-- Nếu có egg gần hơn thì chuyển mục tiêu
+			if nearestEgg and nearestEgg ~= currentEgg and nearestDist + 1 < currentDist then
+				currentEgg = nearestEgg
+				currentDist = nearestDist
+				moveTo(currentEgg.Position)
+				stuckTimer = 0
+				lastPosition = hrp.Position
+			end
+
+			-- Kiểm tra nếu bị kẹt
+			stuckTimer += CHECK_INTERVAL
+			if stuckTimer >= STUCK_TIME_LIMIT then
+				if isStuck(lastPosition, hrp.Position) then
+					print("Bị kẹt! Đang tìm egg khác (có thể xa hơn).")
+					break -- thoát khỏi vòng lặp để tìm egg mới
+				else
+					lastPosition = hrp.Position
+					stuckTimer = 0
+				end
+			end
+
+			-- Nếu đã đến nơi
+			if (hrp.Position - currentEgg.Position).Magnitude <= REACHED_DISTANCE then
+				break
+			end
+		end
+	else
+		print("Không có egg.")
+		task.wait(1)
+	end
+end
