@@ -1,31 +1,27 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+
 local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
 
 local eggName = "Egg"
 local SCAN_INTERVAL = 0.5
-local REACHED_DISTANCE = 5
-local TIMEOUT = 5
 local USE_TOUCH = true
-local MAX_FAILED_ATTEMPTS = 3
 
-local triedEggs = {}
-local failedAttempts = 0
+-- 📍 Ghi nhớ vị trí ban đầu
+local originPosition = hrp.Position
 
--- Tìm egg gần nhất chưa thử
+-- Tìm egg gần nhất
 local function findNearestEgg()
 	local closestEgg, minDist = nil, math.huge
 
 	for _, obj in workspace:GetDescendants() do
 		if obj:IsA("MeshPart") and obj.Name == eggName and obj:IsDescendantOf(workspace) then
-			if not triedEggs[obj] then
-				local dist = (hrp.Position - obj.Position).Magnitude
-				if dist < minDist then
-					closestEgg = obj
-					minDist = dist
-				end
+			local dist = (hrp.Position - obj.Position).Magnitude
+			if dist < minDist then
+				closestEgg = obj
+				minDist = dist
 			end
 		end
 	end
@@ -33,10 +29,9 @@ local function findNearestEgg()
 	return closestEgg
 end
 
--- Chạm để nhặt (nếu cần)
+-- Chạm egg
 local function touchEgg(egg)
 	if not USE_TOUCH then return end
-
 	pcall(function()
 		firetouchinterest(hrp, egg, 0)
 		task.wait(0.1)
@@ -44,24 +39,14 @@ local function touchEgg(egg)
 	end)
 end
 
--- Reset nhân vật
-local function resetCharacter()
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.Health = 0
-	end
-end
-
--- Đợi nhân vật hồi sinh
-local function waitForRespawn()
-	character = player.CharacterAdded:Wait()
-	hrp = character:WaitForChild("HumanoidRootPart")
-	humanoid = character:WaitForChild("Humanoid")
-end
-
--- Teleport đến egg
+-- Teleport tới egg
 local function teleportTo(pos)
 	hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
+end
+
+-- Teleport về chỗ cũ
+local function teleportBack()
+	hrp.CFrame = CFrame.new(originPosition + Vector3.new(0, 5, 0))
 end
 
 -- Main loop
@@ -69,43 +54,18 @@ while true do
 	local egg = findNearestEgg()
 
 	if egg then
-		triedEggs[egg] = true
-		print("🎯 Tìm thấy egg, teleport tới...")
+		print("🥚 Tìm thấy egg! Đến nhặt...")
 		teleportTo(egg.Position)
-
-		-- Đi bộ tới egg
 		humanoid:MoveTo(egg.Position)
-		touchEgg(egg)
 
-		local timer = 0
 		repeat
 			task.wait(0.1)
-			timer += 0.1
-			if USE_TOUCH then touchEgg(egg) end
-		until not egg:IsDescendantOf(workspace) or timer >= TIMEOUT or (hrp.Position - egg.Position).Magnitude <= REACHED_DISTANCE
+			touchEgg(egg)
+		until not egg:IsDescendantOf(workspace)
 
-		if egg:IsDescendantOf(workspace) then
-			warn("⚠️ Egg chưa lấy được sau " .. TIMEOUT .. "s, reset nhân vật.")
-			failedAttempts += 1
-			resetCharacter()
-			waitForRespawn()
-
-			if failedAttempts >= MAX_FAILED_ATTEMPTS then
-				warn("❌ Kẹt quá 3 lần liên tiếp, reset thêm lần nữa.")
-				resetCharacter()
-				waitForRespawn()
-				failedAttempts = 0
-			end
-
-			-- Sau reset, xóa danh sách egg đã thử
-			triedEggs = {}
-		else
-			print("✅ Đã lấy egg thành công! Tiếp tục quét egg khác...")
-			failedAttempts = 0
-			-- Không reset sau khi lấy egg thành công
-		end
+		print("✅ Nhặt xong egg, quay về vị trí gốc.")
+		teleportBack()
 	else
-		warn("🔎 Đang quét egg...")
 		task.wait(SCAN_INTERVAL)
 	end
 end
