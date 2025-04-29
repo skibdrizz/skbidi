@@ -74,7 +74,7 @@ while true do
 		print("🎯 Tìm thấy egg, teleport tới...")
 		teleportTo(egg.Position)
 
-		-- Đi bộ đến egg để chạm
+		-- Đi bộ tới egg
 		humanoid:MoveTo(egg.Position)
 		touchEgg(egg)
 
@@ -86,10 +86,21 @@ while true do
 		until not egg:IsDescendantOf(workspace) or timer >= TIMEOUT or (hrp.Position - egg.Position).Magnitude <= REACHED_DISTANCE
 
 		if egg:IsDescendantOf(workspace) then
-			warn("⚠️ Egg vẫn chưa được lấy sau " .. TIMEOUT .. "s, bỏ qua.")
+			warn("⚠️ Egg chưa lấy được sau " .. TIMEOUT .. "s, reset nhân vật.")
 			failedAttempts += 1
+			resetCharacter()
+			waitForRespawn()
+
+			if failedAttempts >= MAX_FAILED_ATTEMPTS then
+				warn("❌ Kẹt quá 3 lần liên tiếp, reset thêm lần nữa.")
+				resetCharacter()
+				waitForRespawn()
+				failedAttempts = 0
+			end
+
+			-- Sau reset, bỏ qua egg này, tìm egg khác
 		else
-			print("✅ Đã lấy egg. Reset " .. RESET_AFTER_PICK .. " lần...")
+			print("✅ Đã lấy egg thành công! Reset " .. RESET_AFTER_PICK .. " lần...")
 			failedAttempts = 0
 
 			for i = 1, RESET_AFTER_PICK do
@@ -97,16 +108,11 @@ while true do
 				waitForRespawn()
 			end
 
-			triedEggs = {} -- reset danh sách egg đã thử sau khi lấy thành công
+			-- Sau reset 5 lần, tìm egg mới
 		end
 
-		if failedAttempts >= MAX_FAILED_ATTEMPTS then
-			warn("❌ Kẹt quá 3 lần, reset nhân vật.")
-			resetCharacter()
-			waitForRespawn()
-			triedEggs = {}
-			failedAttempts = 0
-		end
+		-- Sau khi reset xong, luôn reset danh sách egg đã thử
+		triedEggs = {}
 	else
 		task.wait(SCAN_INTERVAL)
 	end
