@@ -3,17 +3,10 @@ local character = player.Character or player.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
 local eggName = "Egg"
-local CHECK_INTERVAL = 0.2
+local SCAN_INTERVAL = 0.5
 local REACHED_DISTANCE = 5
-local STUCK_TIME_LIMIT = 5
 
-local function moveTo(position)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid:MoveTo(position)
-	end
-end
-
+-- Tìm egg gần nhất
 local function findNearestEgg()
 	local closestEgg = nil
 	local shortestDistance = math.huge
@@ -28,56 +21,34 @@ local function findNearestEgg()
 		end
 	end
 
-	return closestEgg, shortestDistance
+	return closestEgg
 end
 
-local function isStuck(lastPos, currentPos)
-	local movement = (lastPos - currentPos).Magnitude
-	return movement < 1 -- ít hơn 1 stud trong 5s => coi như bị kẹt
+-- Dịch chuyển nhanh (bay)
+local function teleportTo(pos)
+	hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0)) -- bay lên 5 studs để tránh kẹt
 end
 
 while true do
-	local currentEgg, currentDist = findNearestEgg()
+	local egg = findNearestEgg()
 
-	if currentEgg then
-		moveTo(currentEgg.Position)
+	if egg then
+		local originalPos = hrp.Position
+		print("Đã phát hiện egg, bay đến...")
 
-		local stuckTimer = 0
-		local lastPosition = hrp.Position
+		-- Bay đến egg
+		teleportTo(egg.Position)
 
-		while currentEgg:IsDescendantOf(workspace) do
-			task.wait(CHECK_INTERVAL)
+		-- Chờ đến khi egg bị lấy hoặc biến mất
+		repeat
+			task.wait(0.1)
+		until not egg:IsDescendantOf(workspace) or (hrp.Position - egg.Position).Magnitude <= REACHED_DISTANCE
 
-			local nearestEgg, nearestDist = findNearestEgg()
-
-			-- Nếu có egg gần hơn thì chuyển mục tiêu
-			if nearestEgg and nearestEgg ~= currentEgg and nearestDist + 1 < currentDist then
-				currentEgg = nearestEgg
-				currentDist = nearestDist
-				moveTo(currentEgg.Position)
-				stuckTimer = 0
-				lastPosition = hrp.Position
-			end
-
-			-- Kiểm tra nếu bị kẹt
-			stuckTimer += CHECK_INTERVAL
-			if stuckTimer >= STUCK_TIME_LIMIT then
-				if isStuck(lastPosition, hrp.Position) then
-					print("Bị kẹt! Đang tìm egg khác (có thể xa hơn).")
-					break -- thoát khỏi vòng lặp để tìm egg mới
-				else
-					lastPosition = hrp.Position
-					stuckTimer = 0
-				end
-			end
-
-			-- Nếu đã đến nơi
-			if (hrp.Position - currentEgg.Position).Magnitude <= REACHED_DISTANCE then
-				break
-			end
-		end
+		print("Quay lại vị trí cũ...")
+		-- Quay lại vị trí cũ
+		teleportTo(originalPos)
 	else
-		print("Không có egg.")
-		task.wait(1)
+		-- Không có egg, đợi rồi quét lại
+		task.wait(SCAN_INTERVAL)
 	end
 end
