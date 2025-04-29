@@ -10,6 +10,7 @@ local REACHED_DISTANCE = 5
 local TIMEOUT = 5
 local USE_TOUCH = true
 local MAX_FAILED_ATTEMPTS = 3
+local RESET_AFTER_PICK = 5 -- số lần reset sau khi lấy egg
 
 local triedEggs = {}
 local failedAttempts = 0
@@ -59,9 +60,9 @@ local function waitForRespawn()
 	humanoid = character:WaitForChild("Humanoid")
 end
 
--- Di chuyển tới egg
-local function moveToEgg(egg)
-	return humanoid:MoveTo(egg.Position)
+-- Teleport đến egg
+local function teleportTo(pos)
+	hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
 end
 
 -- Main loop
@@ -70,9 +71,11 @@ while true do
 
 	if egg then
 		triedEggs[egg] = true
-		print("🎯 Tìm thấy egg, đi tới...")
+		print("🎯 Tìm thấy egg, teleport tới...")
+		teleportTo(egg.Position)
 
-		moveToEgg(egg)
+		-- Đi bộ đến egg để chạm
+		humanoid:MoveTo(egg.Position)
 		touchEgg(egg)
 
 		local timer = 0
@@ -86,8 +89,15 @@ while true do
 			warn("⚠️ Egg vẫn chưa được lấy sau " .. TIMEOUT .. "s, bỏ qua.")
 			failedAttempts += 1
 		else
-			print("✅ Đã lấy egg.")
+			print("✅ Đã lấy egg. Reset " .. RESET_AFTER_PICK .. " lần...")
 			failedAttempts = 0
+
+			for i = 1, RESET_AFTER_PICK do
+				resetCharacter()
+				waitForRespawn()
+			end
+
+			triedEggs = {} -- reset danh sách egg đã thử sau khi lấy thành công
 		end
 
 		if failedAttempts >= MAX_FAILED_ATTEMPTS then
