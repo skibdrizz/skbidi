@@ -10,7 +10,6 @@ local REACHED_DISTANCE = 5
 local TIMEOUT = 5
 local USE_TOUCH = true
 local MAX_FAILED_ATTEMPTS = 3
-local RESET_AFTER_PICK = 5 -- số lần reset sau khi lấy egg
 
 local triedEggs = {}
 local failedAttempts = 0
@@ -98,22 +97,15 @@ while true do
 				failedAttempts = 0
 			end
 
-			-- Sau reset, bỏ qua egg này, tìm egg khác
+			-- Sau reset, xóa danh sách egg đã thử
+			triedEggs = {}
 		else
-			print("✅ Đã lấy egg thành công! Reset " .. RESET_AFTER_PICK .. " lần...")
+			print("✅ Đã lấy egg thành công! Tiếp tục quét egg khác...")
 			failedAttempts = 0
-
-			for i = 1, RESET_AFTER_PICK do
-				resetCharacter()
-				waitForRespawn()
-			end
-
-			-- Sau reset 5 lần, tìm egg mới
+			-- Không reset sau khi lấy egg thành công
 		end
-
-		-- Sau khi reset xong, luôn reset danh sách egg đã thử
-		triedEggs = {}
 	else
+		warn("🔎 Đang quét egg...")
 		task.wait(SCAN_INTERVAL)
 	end
 end
